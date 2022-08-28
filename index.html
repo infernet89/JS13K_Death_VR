@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Ouroboros TEST</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	
+	</head>
+	<body>
+		<script type="module">
+		//game variables
+		var level;
+		var snakeHead;
+		var snakeSize=0.1;
+		var snakeSpeed=0.005;
+		var snakeColor=0x00FF00;
+		var tailColor=0x00AA00;
+		var snakeGrowing=0;
+		var foods=[];
+		var newFoodCooldown=0;
+		var gameOverCoooldown=0;
+
+		//import * as THREE from 'https://threejs.org/examples/../build/three.module.js';
+		import * as THREE from './three.module.js';
+		import { BoxLineGeometry } from './BoxLineGeometry.js';
+		var camera, scene, renderer;
+		var controller1, controller2,lastActiveController;
+		var room;
+		var count = 0;
+		var normal = new THREE.Vector3();
+		var relativeVelocity = new THREE.Vector3();
+		var clock = new THREE.Clock();
+		var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+
+		
+		/*#############
+	    Funzioni Utili
+		##############*/
+		function rand(da, a)
+		{
+		    if(da>a) return rand(a,da);
+		    a=a+1;
+		    return Math.floor(Math.random()*(a-da)+da);
+		}
+		function distanceFrom(a,b)
+		{
+		    return Math.sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z));
+		}
+		</script>
+	</body>
+</html>
