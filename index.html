@@ -90,6 +90,41 @@
 		{
 			if(font==undefined)
 				return;
+			//remove what we added
+			if(textMesh1!=undefined)
+				room.remove(textMesh1);
+			if(textMesh2!=undefined)
+				room.remove(textMesh2);
+			if(textMesh3!=undefined)
+				room.remove(textMesh3);
+			if(textMesh4!=undefined)
+				room.remove(textMesh4);
+			if(tutorialMesh1!=undefined)
+				controller1.remove(tutorialMesh1);
+			if(tutorialMesh2!=undefined)
+				controller2.remove(tutorialMesh2);
+			//create geometry for new text
+			const geo = new THREE.TextBufferGeometry(text,{font:font,size: 0.1,height:0.002});
+            geo.center();
+	        //create and reposition meshes   
+            textMesh1 = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:textColor}));
+            textMesh1.position.set(0,2,-2);
+            room.add(textMesh1);
+
+            textMesh2=textMesh1.clone();
+            textMesh2.rotateY(Math.PI);
+            textMesh2.position.set(0,2,2);
+            room.add(textMesh2);
+
+            textMesh3=textMesh1.clone();
+            textMesh3.rotateY(Math.PI/2);
+            textMesh3.position.set(-2,2,0);
+            room.add(textMesh3);
+
+            textMesh4=textMesh1.clone();
+            textMesh4.rotateY(-Math.PI/2);
+            textMesh4.position.set(2,2,0);
+            room.add(textMesh4);
 
             if(tutorialEnabled)
             {
@@ -248,6 +283,32 @@
 		    //crescita
 		    piece.meat+=snakeSpeed;
 
+		    fixtdObject(piece);
+
+		    //trova l'ultimo elemento
+		    while(piece.next!=null)
+		    {
+		        if(piece.next.meat<=0)
+		        {
+		            room.remove(piece.next.tdObject);
+		            piece.next=null;
+		        }
+		        else piece=piece.next;
+		    }
+		        
+		    //l'ultimo della coda, cresce o si sposta
+		    if(snakeGrowing>snakeSpeed)
+		        snakeGrowing-=snakeSpeed;
+		    else piece.meat-=snakeSpeed;
+		    //sarebbe dovuto crescere di un pochino
+		    if(snakeGrowing<0)
+		    {
+		        piece.meat+=snakeGrowing;
+		        snakeGrowing=0;
+		    }
+
+		    if(piece!=snakeHead)
+		    	fixtdObject(piece);
 		    
 		}
 		function fixtdObject(piece)
@@ -283,7 +344,72 @@
 		        piece.tdObject.scale.z=snakeSize+piece.meat;
 		        piece.tdObject.position.z=piece.z+piece.meat/2;
 		    }
+		}
+		function getChosenDirection(dx,dy,dz)
+		{
+			var res=7;
+			if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>Math.abs(dz))
+			{
+				if(dx>0)
+					res=4;
+				else res=6;
+			}				
+			else if(Math.abs(dy)>Math.abs(dx) && Math.abs(dy)>Math.abs(dz))
+			{
+				if(dy>0)
+					res=2;
+				else res=8;
+			}
+			else if(Math.abs(dz)>Math.abs(dx) && Math.abs(dz)>Math.abs(dy))
+			{
+				if(dz>0)
+					res=7;
+				else res=5;
+			}
+			return res;
+		}
+		function changeDirection(newDirection)
+		{
+		    //change direction cooldown
+		    if(snakeHead.meat<snakeSize)
+		        newDirection=-1;
+		    //not allowed changes
+		    if( (snakeHead.direction==2 && newDirection==8) ||
+		        (snakeHead.direction==8 && newDirection==2) ||
+		        (snakeHead.direction==4 && newDirection==6) ||
+		        (snakeHead.direction==6 && newDirection==4) ||
+		        (snakeHead.direction==5 && newDirection==7) ||
+		        (snakeHead.direction==7 && newDirection==5) )
+		        {
+		            newDirection=-1;
+		        }
 
+		    //he changed direction
+		    if(newDirection!=-1 && snakeHead.direction!=newDirection)
+		    {
+		        var oldHead=snakeHead;
+		        snakeHead=new Object();
+		        snakeHead.x=oldHead.x;
+		        snakeHead.y=oldHead.y;
+		        snakeHead.z=oldHead.z;
+		        snakeHead.tdObject=new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: tailColor } ) );
+			    snakeHead.tdObject.position.x=snakeHead.x;
+			    snakeHead.tdObject.position.y=snakeHead.y;
+			    snakeHead.tdObject.position.z=snakeHead.z;
+			    snakeHead.tdObject.scale.x=snakeSize;
+			    snakeHead.tdObject.scale.y=snakeSize;
+			    snakeHead.tdObject.scale.z=snakeSize;
+			    setTimeout(function() { room.add(snakeHead.tdObject); }, 5);//delayed add
+
+		        snakeHead.direction=newDirection;
+		        snakeHead.meat=0;
+		        snakeHead.growth=1;
+		        snakeHead.next=oldHead;
+		        snakeHead.tdHeadObject=oldHead.tdHeadObject;
+
+		        vibrate(0.9,50,lastActiveController);
+		        tutorialEnabled=false;
+		    }
 		}
 		function checkCollisions()
 		{
@@ -321,7 +447,65 @@
 		    }
 		    return res;
 		}
-		
+		function getSnakePieceRect(piece)
+		{
+		    var res=new Object();
+		    var size=snakeSize;
+		    if(piece.direction==8)//top
+		    {
+		        res.x=piece.x-size/2;
+		        res.y=piece.y-piece.meat-size;
+		        res.z=piece.z-size/2;
+		        res.width=size;
+		        res.height=piece.meat;
+		        res.depth=size;
+		    }
+		    else if(piece.direction==2)//bottom
+		    {
+		        res.x=piece.x-size/2;
+		        res.y=piece.y;
+		        res.z=piece.z-size/2;
+		        res.width=size;
+		        res.height=piece.meat;
+		        res.depth=size;
+		    }
+		    else if(piece.direction==4)//left
+		    {
+		        res.x=piece.x;
+		        res.y=piece.y-size/2;
+		        res.z=piece.z-size/2;
+		        res.width=piece.meat;
+		        res.height=size;
+		        res.depth=size;
+		    }
+		    else if(piece.direction==6)//right
+		    {
+		        res.x=piece.x-piece.meat-size;
+		        res.y=piece.y-size/2;
+		        res.z=piece.z-size/2;
+		        res.width=piece.meat;
+		        res.height=size;
+		        res.depth=size;
+		    }
+		    else if(piece.direction==5)//allontana
+		    {
+		        res.x=piece.x-size/2;
+		        res.y=piece.y-size/2;
+		        res.z=piece.z-piece.meat-size;
+		        res.width=size;
+		        res.height=size;
+		        res.depth=piece.meat;
+		    }
+		    else if(piece.direction==7)//avvicina
+		    {
+		        res.x=piece.x-size/2;
+		        res.y=piece.y-size/2;
+		        res.z=piece.z;
+		        res.width=size;
+		        res.height=size;
+		        res.depth=piece.meat;
+		    }
+
 		    return res;
 		}
 		//3d Functions
@@ -446,7 +630,92 @@
 			else if(level!=2) 
 				level=0;
 			//snake functions
-		
+			if(level==0)
+			{
+				//we move snake only in VR mode
+				if(renderer.vr.isPresenting())
+				{
+					moveSnake();
+					//move particles
+					for(var i=0;i<particles.length;i++)
+					{
+						//particles[i].position.x+=particles[i].userData.dx;
+						particles[i].position.y+=particles[i].userData.dy;
+						//particles[i].position.z+=particles[i].userData.dz;
+						particles[i].material.opacity-=0.001;
+						if(particles[i].userData.ttl--<0 || particles[i].position.y<0)
+						{
+						    particles[i].position.x=rand(-2000,2000)*0.0009;
+						    particles[i].position.y=rand(200,4000)*0.0009;
+						    particles[i].position.z=rand(-2000,2000)*0.0009;
+						    particles[i].userData.ttl=rand(300,3000);
+						    particles[i].material.opacity=particles[i].userData.ttl/5000;
+						}
+					}
+					for(var i=0;i<foods.length;i++)
+					{
+						//eat an apple
+						if(distanceFrom(snakeHead,foods[i])<snakeSize/2+foods[i].size/2)
+			            {
+			            	updateScore(50);
+			                snakeGrowing=foods[i].nutriment;
+			                room.remove(foods[i].tdObject);
+			                foods.splice(i,1);
+			                i=i-1;
+			                snakeSpeed+=0.001;//slightly increase speedd
+			                appleSound.play();
+			                continue;
+			            }
+			            //animazione di spawn mele
+						if(foods[i].growth<=1)
+						{
+		                    foods[i].growth+=0.01;
+		                    foods[i].tdObject.scale.x=foods[i].size*foods[i].growth;
+						    foods[i].tdObject.scale.y=foods[i].size*foods[i].growth;
+						    foods[i].tdObject.scale.z=foods[i].size*foods[i].growth;
+		                }
+		            }
+			        if(newFoodCooldown--<0)
+			        {
+			            generateApple();
+			            newFoodCooldown=rand(200,900)+foods.length*10;
+			        }
+			        if(checkCollisions())
+			        {
+			        	gameOver();
+			        }
+			    }
+			}
+			else if(level==2)
+			{
+				//cibo
+				for(var i=0;i<foods.length;i++)
+				if(foods[i].growth>0)
+				{
+                    foods[i].growth-=0.1;
+                    foods[i].tdObject.scale.x=foods[i].size*foods[i].growth;
+				    foods[i].tdObject.scale.y=foods[i].size*foods[i].growth;
+				    foods[i].tdObject.scale.z=foods[i].size*foods[i].growth;
+                }
+                else room.remove(foods[i].tdObject);
+                var tmp=snakeHead;
+			    while(tmp!=null)
+			    {
+			    	if(tmp.growth>0)
+			    	{
+			    		tmp.growth-=0.1;
+	                    tmp.tdObject.scale.x=snakeSize*tmp.growth;
+					    tmp.tdObject.scale.y=snakeSize*tmp.growth;
+					    tmp.tdObject.scale.z=snakeSize*tmp.growth;
+			    	}
+			    	else room.remove(tmp.tdObject);
+			        tmp=tmp.next;
+			    }
+			    if(gameOverCoooldown--<0)
+			    {
+			    	generateLevel();
+			    }
+			}
 			
 
 			renderer.render( scene, camera );
